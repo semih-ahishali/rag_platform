@@ -22,10 +22,12 @@ Built as a learning project with CV impact in mind — every tool chosen appears
 | Developer 2 | Colleague — connects via SSH from their machine |
 | Dev server | Hyper-V Ubuntu 24.04 Desktop VM on Developer 1's laptop |
 | VM location | E:\Hyper-V\ on host Windows machine |
-| VM static IP | TBD — set during Phase 0 VM configuration |
+| VM static IP | 192.168.1.10/24 |
 | VM hostname | rag-dev-server |
-| VM username | ai-test-user |
-| Network | Same LAN — both developers connect via SSH |
+| Project root | /home/ai_test_user/rag_platform/ |
+| VM username | ai_test_user |
+| Network | Same LAN — SSH + NoMachine remote desktop |
+| Gateway | 192.168.1.1 (modem/router) |
 | IDE | PyCharm Professional — SSH remote interpreter pointing to VM |
 | Python | 3.12 (system default on Ubuntu 24.04, no PPA needed) |
 | OS | Ubuntu 24.04 Desktop LTS |
@@ -38,7 +40,7 @@ Built as a learning project with CV impact in mind — every tool chosen appears
 
 | Tool | Version | Role |
 |---|---|---|
-| Python | 3.12 | Runtime |
+| Python | 3.12.3 | Runtime |
 | FastAPI | Latest | API layer + JWT auth + BackgroundTasks |
 | LangChain | Latest | RAG orchestration |
 | Pydantic v2 | Latest | Data validation + settings |
@@ -194,15 +196,17 @@ Two isolated Docker Compose stacks run simultaneously on the VM:
 
 ```
 VM filesystem:
-├── /home/ai-test-user/rag-platform-dev/     ← DEV environment
+/home/ai_test_user/rag_platform/
+├── dev/                                     ← DEV environment
 │   ├── docker-compose.yml
 │   ├── .env.dev                              ← gitignored
 │   └── .venv-dev/                           ← Python 3.12 virtualenv
-│
-└── /home/ai-test-user/rag-platform-prod/    ← PROD environment
-    ├── docker-compose.yml
-    ├── .env.prod                             ← gitignored
-    └── .venv-prod/                          ← Python 3.12 virtualenv
+├── prod/                                    ← PROD environment
+│   ├── docker-compose.yml
+│   ├── .env.prod                             ← gitignored
+│   └── .venv-prod/                          ← Python 3.12 virtualenv
+└── repos/                                   ← bare git repo
+    └── rag-platform.git/
 ```
 
 Requirements split:
@@ -265,9 +269,10 @@ GitHub Actions workflow files:
 
 ```
 GitHub remote:     github.com/<org>/rag-platform
-Bare repo on VM:   /home/ai-test-user/repos/rag-platform.git
-Dev clone:         /home/ai-test-user/rag-platform-dev/
-Prod clone:        /home/ai-test-user/rag-platform-prod/
+Project root:      /home/ai_test_user/rag_platform/
+Bare repo on VM:   /home/ai_test_user/rag_platform/repos/rag-platform.git
+Dev clone:         /home/ai_test_user/rag_platform/dev/
+Prod clone:        /home/ai_test_user/rag_platform/prod/
 ```
 
 Branch strategy:
@@ -355,16 +360,18 @@ Phase 11: Advanced — Celery async tasks + enterprise hardening
 - [x] Ubuntu 24.04 Desktop ISO downloaded
 - [x] VM created in Hyper-V
 - [x] Ubuntu 24.04 Desktop installed
-- [ ] Static IP configured on VM
-- [ ] SSH server verified and accessible
-- [ ] SSH keys set up for both developers
-- [ ] PyCharm Pro SSH remote interpreter configured
-- [ ] Python 3.12 confirmed (system default, no PPA needed)
+- [x] Static IP configured on VM (192.168.1.10/24, gateway 192.168.1.1)
+- [x] SSH server verified and accessible
+- [x] SSH keys set up for both developers
+- [x] Project folders created (/home/ai_test_user/rag_platform/{dev,prod,repos})
+- [x] Python virtualenvs created (.venv-dev, .venv-prod) + pip upgraded
+- [x] PyCharm Pro SSH remote interpreter configured (192.168.1.10, ai_test_user, key-based)
+- [x] Python 3.12.3 confirmed (system default, no PPA needed)
 - [ ] Docker + Docker Compose installed
 - [ ] Ollama installed + models pulled (llama3.2:3b, nomic-embed-text)
 - [ ] Git installed + bare repo created
 - [ ] GitHub repo created + self-hosted runner registered
-- [ ] VM IP confirmed: **TBD**
+- [x] VM IP confirmed: 192.168.1.10
 
 ### Completed Phases
 - None yet
@@ -375,10 +382,10 @@ Phase 11: Advanced — Celery async tasks + enterprise hardening
 
 ```bash
 # Connect to VM from Windows
-ssh ai-test-user@<VM-IP>
+ssh ai_test_user@192.168.1.10
 
 # Start all services
-cd ~/rag-platform-dev && docker compose up -d
+cd ~/rag_platform/dev && docker compose up -d
 
 # View logs
 docker compose logs -f api
