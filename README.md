@@ -373,6 +373,7 @@ Phase 11: Advanced — Celery async tasks + enterprise hardening
 
 ## Key Commands Reference
 
+
 ```bash
 # Connect to VM from Windows
 ssh ai-test-user@<VM-IP>
