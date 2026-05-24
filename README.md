@@ -24,10 +24,10 @@ Built as a learning project with CV impact in mind — every tool chosen appears
 | VM location | E:\Hyper-V\ on host Windows machine |
 | VM static IP | TBD — set during Phase 0 VM configuration |
 | VM hostname | rag-dev-server |
-| VM username | devuser |
+| VM username | ai-test-user |
 | Network | Same LAN — both developers connect via SSH |
 | IDE | PyCharm Professional — SSH remote interpreter pointing to VM |
-| Python | 3.12 (default Python on Ubuntu 24.04) |
+| Python | 3.12 (system default on Ubuntu 24.04, no PPA needed) |
 | OS | Ubuntu 24.04 Desktop LTS |
 
 ---
@@ -38,7 +38,7 @@ Built as a learning project with CV impact in mind — every tool chosen appears
 
 | Tool | Version | Role |
 |---|---|---|
-| Python | 3.11 | Runtime |
+| Python | 3.12 | Runtime |
 | FastAPI | Latest | API layer + JWT auth + BackgroundTasks |
 | LangChain | Latest | RAG orchestration |
 | Pydantic v2 | Latest | Data validation + settings |
@@ -176,14 +176,117 @@ rag-platform/
 
 ---
 
-## Git Repository Setup (target)
+## Environments
+
+Two isolated Docker Compose stacks run simultaneously on the VM:
+
+| Service | Dev port | Prod port |
+|---|---|---|
+| Nginx | 8080 | 80 |
+| FastAPI | 8000 | 8001 |
+| Next.js | 3000 | 3001 |
+| PostgreSQL | 5432 | 5433 |
+| Qdrant | 6333 | 6334 |
+| Elasticsearch | 9200 | 9201 |
+| Redis | 6379 | 6380 |
+| Ollama | 11434 | 11435 |
+| Phoenix | 6006 | 6007 |
 
 ```
-Bare repo on VM:   /home/devuser/repos/rag-platform.git
-Clone path:        /home/devuser/rag-platform
-Remote:            devuser@<VM-IP>:/home/devuser/repos/rag-platform.git
-Branch strategy:   main (protected) + feature branches
+VM filesystem:
+├── /home/ai-test-user/rag-platform-dev/     ← DEV environment
+│   ├── docker-compose.yml
+│   ├── .env.dev                              ← gitignored
+│   └── .venv-dev/                           ← Python 3.12 virtualenv
+│
+└── /home/ai-test-user/rag-platform-prod/    ← PROD environment
+    ├── docker-compose.yml
+    ├── .env.prod                             ← gitignored
+    └── .venv-prod/                          ← Python 3.12 virtualenv
 ```
+
+Requirements split:
+```
+requirements/
+├── base.txt    ← shared packages (fastapi, langchain, qdrant-client...)
+├── dev.txt     ← base + pytest, ruff, black, httpx, factory-boy, pytest-cov
+└── prod.txt    ← base + gunicorn
+```
+
+---
+
+## CI/CD Flow
+
+```
+Developer (PyCharm SSH → VM dev env)
+│
+│  1. Write + test code locally in dev environment
+│
+▼
+GitHub (push to feature branch)
+│
+│  2. GitHub Actions triggers (ci.yml)
+│     ├── pytest (backend tests)
+│     ├── ruff + black (linting)
+│     ├── Playwright (frontend E2E)
+│     └── Newman (Postman API tests)
+│
+▼
+Pull Request (feature → develop or develop → main)
+│
+│  3. Code review — tests must pass before merge allowed
+│     Manual approval by team member (1 click)
+│
+▼
+Merge to main
+│
+│  4. GitHub Actions triggers (deploy.yml)
+│     Self-hosted runner on VM executes:
+│     ├── git pull latest main
+│     ├── docker compose build (prod stack)
+│     ├── docker compose up -d (prod stack)
+│     ├── alembic upgrade head (DB migrations)
+│     └── health check all services
+│
+▼
+Production environment updated ✅
+```
+
+GitHub Actions workflow files:
+```
+.github/workflows/
+├── ci.yml        ← runs on every push + PR (tests + linting)
+└── deploy.yml    ← runs only on merge to main (prod deploy)
+```
+
+---
+
+## Git Repository Setup
+
+```
+GitHub remote:     github.com/<org>/rag-platform
+Bare repo on VM:   /home/ai-test-user/repos/rag-platform.git
+Dev clone:         /home/ai-test-user/rag-platform-dev/
+Prod clone:        /home/ai-test-user/rag-platform-prod/
+```
+
+Branch strategy:
+```
+main        ← production, protected, never commit directly
+develop     ← shared dev integration branch
+feature/xxx ← individual feature branches (short-lived)
+fix/xxx     ← bug fix branches
+```
+
+Merge flow:
+```
+feature/xxx → develop    (daily work, PR required)
+develop     → main       (releases to production, PR required)
+```
+
+Simultaneous SSH note: Both developers connect to the VM at the same time
+via SSH — fully supported. PyCharm SSH remote interpreter is shared.
+Coordinate via Git branches to avoid editing the same file simultaneously.
 
 ---
 
@@ -256,7 +359,7 @@ Phase 11: Advanced — Celery async tasks + enterprise hardening
 - [ ] SSH server verified and accessible
 - [ ] SSH keys set up for both developers
 - [ ] PyCharm Pro SSH remote interpreter configured
-- [ ] Python 3.11 installed via deadsnakes PPA
+- [ ] Python 3.12 confirmed (system default, no PPA needed)
 - [ ] Docker + Docker Compose installed
 - [ ] Ollama installed + models pulled (llama3.2:3b, nomic-embed-text)
 - [ ] Git installed + bare repo created
@@ -272,10 +375,10 @@ Phase 11: Advanced — Celery async tasks + enterprise hardening
 
 ```bash
 # Connect to VM from Windows
-ssh devuser@<VM-IP>
+ssh ai-test-user@<VM-IP>
 
 # Start all services
-cd ~/rag-platform && docker compose up -d
+cd ~/rag-platform-dev && docker compose up -d
 
 # View logs
 docker compose logs -f api
