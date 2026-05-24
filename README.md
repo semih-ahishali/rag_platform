@@ -27,7 +27,7 @@ Built as a learning project with CV impact in mind — every tool chosen appears
 | VM username | devuser |
 | Network | Same LAN — both developers connect via SSH |
 | IDE | PyCharm Professional — SSH remote interpreter pointing to VM |
-| Python | 3.11 (installed via deadsnakes PPA alongside system Python 3.12) |
+| Python | 3.12 (default Python on Ubuntu 24.04) |
 | OS | Ubuntu 24.04 Desktop LTS |
 
 ---
