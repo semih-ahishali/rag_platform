@@ -393,14 +393,3 @@ ollama pull nomic-embed-text
 # Check Ollama running
 curl http://localhost:11434/api/tags
 ```
-
----
-
-## Notes for Next Conversation
-
-Start Phase 1 by saying:
-> "I'm continuing the RAG platform project. Here is the handoff document: [paste this file]"
-
-Claude will have full context and we continue from where we left off.
-
-**Next immediate task:** Configure static IP on the Ubuntu VM and verify SSH access from both laptops.
